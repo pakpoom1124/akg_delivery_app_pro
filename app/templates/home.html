@@ -84,19 +84,22 @@
         </div>
 
         <a href="{{ url_for('items_list') }}" class="btn btn-akg w-100 mb-3">
-            <i class="bi bi-bar-chart"></i> จัดการวัตถุดิบ (Item Master)
+            <i class="bi bi-archive"></i> จัดการวัตถุดิบ (Item Master)
         </a>
         <a href="{{ url_for('branches') }}" class="btn btn-akg w-100 mb-3">
-            <i class="bi bi-bar-chart"></i> จัดการสาขา (AKG Branches)
+            <i class="bi bi-building"></i> จัดการสาขา (AKG Branches)
         </a>
         <a href="{{ url_for('item_received') }}" class="btn btn-akg w-100 mb-3">
-            <i class="bi bi-bar-chart"></i> บันทึกการรับเข้าวัตถุดิบ (Received)
+            <i class="bi bi-bag-plus"></i> บันทึกการรับเข้าวัตถุดิบ (Received)
         </a>
         <a href="{{ url_for('item_wasted') }}" class="btn btn-akg w-100 mb-3">
-            <i class="bi bi-bar-chart"></i> บันทึกวัตถุดิบของเสีย (Wasted)
+            <i class="bi bi-bag-dash"></i> บันทึกวัตถุดิบของเสีย (Wasted)
+        </a>
+        <a href="{{ url_for('item_ending') }}" class="btn btn-akg w-100 mb-3">
+            <i class="bi bi-bag-dash"></i> บันทึกวัตถุดิบสิ้นวัน (Ending)
         </a>
         <a href="{{ url_for('receipts') }}" class="btn btn-akg w-100 mb-3">
-            <i class="bi bi-bar-chart"></i> รายงาน (Received, Wasted, Ending)
+            <i class="bi bi-file-earmark-text"></i> รายงาน (Received, Wasted, Ending)
         </a>
 
         <div class="mt-4 text-muted" style="font-size:0.9rem;">© {{ year }} Nara Group</div>

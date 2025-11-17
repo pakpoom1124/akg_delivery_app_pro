@@ -342,7 +342,7 @@ def item_received():
 
     # GET
     selected_activity = 'Received'
-    activity_labels = {'Received':'รับเข้า (Received)','Wasted':'ปรับ (Wasted)','Issued':'เบิก (Issued)'}
+    activity_labels = {'Received':'รับเข้า (Received)','Wasted':'บันทึกของเสีย (Wasted)','Ending':'บันทึกสิ้นวัน (Ending)'}
     return render_template(
         'item_received.html',
         items=items,
@@ -450,6 +450,103 @@ def item_wasted():
         selected_activity_label=activity_labels.get(selected_activity, selected_activity)
     )
 
+# 4.2) บันทึกวัตถุดิบสิ้นวัน (Ending)
+@app.route('/item_ending', methods=['GET','POST'])
+def item_ending():
+    db = get_db(); cur = db.cursor()
+
+    # 1) วัตถุดิบที่ยัง active
+    cur.execute("""
+        SELECT item_code, item_name, default_unit
+        FROM items
+        WHERE is_active=1
+        ORDER BY item_code
+    """)
+    items = cur.fetchall()
+
+    # 2) สาขาสำหรับ dropdown
+    cur.execute("""
+        SELECT branch_id, branch_name
+        FROM AKG_Branches
+        WHERE is_active=1
+        ORDER BY branch_id
+    """)
+    branches = cur.fetchall()
+
+    if request.method == 'POST':
+        date_str  = request.form.get('date') or datetime.now().strftime('%Y-%m-%d')
+        branch    = request.form.get('branch','').strip() or 'MAIN'
+        # Normalize activity ให้เป็น 'Ending' เสมอ (รองรับ alias เผื่อมีการส่งค่ามาแตกต่างกัน)
+        raw_activity = (request.form.get('activity') or 'Ending').strip()
+        aliases = {
+            'ending': 'Ending',
+            'end': 'Ending',
+            'สิ้นวัน': 'Ending',
+            'ending (closing)': 'Ending',
+        }
+        activity = aliases.get(raw_activity.lower(), 'Ending')
+
+        try:
+            inserted = 0
+            for code, name, unit in items:
+                code_str = str(code)
+
+                qty_str = (request.form.get(f'qty_{code_str}','') or '').strip()
+                note    = (request.form.get(f'note_{code_str}','') or '').strip()
+                fileobj = request.files.get(f'file_{code_str}')
+
+                # ถ้าไม่ได้ใส่อะไรเลยในแถวนี้ ให้ข้าม
+                if qty_str == '' and note == '' and not (fileobj and fileobj.filename):
+                    continue
+
+                q_val = None
+                if qty_str != '':
+                    try:
+                        q_val = float(qty_str)
+                    except ValueError:
+                        q_val = 0.0
+
+                saved_filename = None
+                if fileobj and fileobj.filename:
+                    if allowed_file(fileobj.filename):
+                        original = secure_filename(fileobj.filename)
+                        ts = datetime.now().strftime('%Y%m%d%H%M%S')
+                        composed = f"{date_str}_{branch}_{activity}_{code_str}_{ts}_{original}"
+                        fname = secure_filename(composed)
+                        fileobj.save(os.path.join(UPLOAD_DIR, fname))
+                        saved_filename = fname
+                    else:
+                        flash(f'ไฟล์แนบของรหัส {code_str} ไม่รองรับนามสกุล', 'warning')
+
+                # บันทึกลงตาราง item_ending
+                cur.execute("""
+                    INSERT INTO item_ending
+                      (receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (date_str, branch, activity, code_str, name, q_val, unit, note, saved_filename))
+                inserted += 1
+
+            db.commit()
+            flash(f'บันทึกสิ้นวัน {inserted} แถวเรียบร้อย')
+        except Exception as e:
+            db.rollback()
+            flash(f'เกิดข้อผิดพลาด: {e}')
+        finally:
+            db.close()
+        return redirect(url_for('item_ending'))
+
+    # GET
+    selected_activity = 'Ending'
+    activity_labels = {'Ending':'สิ้นวัน (Ending)'}
+    return render_template(
+        'item_ending.html',
+        items=items,
+        branches=branches,
+        nowdate=datetime.now().strftime('%Y-%m-%d'),
+        selected_activity=selected_activity,
+        selected_activity_label=activity_labels.get(selected_activity, selected_activity)
+    )
+
 # 5) หน้าแสดงรายงาน + ตัวกรอง
 @app.route('/receipts')
 def receipts():
@@ -460,8 +557,20 @@ def receipts():
     branch    = request.args.get('branch','').strip()
     activity  = request.args.get('activity','').strip()
 
-    sql = ("SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at "
-           "FROM item_receipts WHERE 1=1")
+    sql = """
+        SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+        FROM (
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_receipts
+            UNION ALL
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_wasted
+            UNION ALL
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_ending
+        ) AS all_moves
+        WHERE 1=1
+    """
     params = []
     if date_from:
         sql += " AND receipt_date >= %s"; params.append(date_from)
@@ -504,8 +613,20 @@ def export_item_receipts():
     date_to   = request.args.get('date_to')
     branch    = request.args.get('branch','').strip()
     activity  = request.args.get('activity','').strip()
-    sql = ("SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at "
-           "FROM item_receipts WHERE 1=1")
+    sql = """
+        SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+        FROM (
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_receipts
+            UNION ALL
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_wasted
+            UNION ALL
+            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            FROM item_ending
+        ) AS all_moves
+        WHERE 1=1
+    """
     params = []
     if date_from:
         sql += " AND receipt_date >= %s"; params.append(date_from)
