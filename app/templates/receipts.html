@@ -1,4 +1,4 @@
-<file name=0 path=/Users/pakpoomchomchay/Desktop/Dev_Program/Nara/akg_delivery_app_pro/app/templates/receipts.html><!doctype html>
+<!doctype html>
 <html lang="th">
 <head>
   <meta charset="utf-8">
@@ -15,7 +15,8 @@
       padding: 20px;
     }
     .card-container {
-      max-width: 1000px;
+      /* ปรับความกว้างสูงสุดของการ์ดให้ใหญ่ขึ้น เพื่อให้ตารางรายงานด้านล่างมีพื้นที่มากขึ้น */
+      max-width: 1200px;
       margin: 0 auto;
       background-color: #fff;
       border-radius: 2rem;
@@ -31,6 +32,55 @@
     .table th {
       background: #825ee4;
       color: #fff;           
+    }
+
+    /* จัดรูปแบบหัวตารางให้ไม่ตัดบรรทัด และให้ตัวอักษรหนาขึ้นเล็กน้อย */
+    .table thead th {
+      white-space: nowrap;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+
+    /* ควบคุมความกว้างขั้นต่ำของแต่ละคอลัมน์หลักในตารางรายงาน
+       ถ้าต้องการให้กว้าง/แคบลง สามารถปรับค่า min-width ที่นี่ได้ */
+    .col-date {
+      min-width: 110px;
+    }
+
+    .col-branch {
+      min-width: 110px;
+    }
+
+    .col-activity {
+      min-width: 120px;
+    }
+
+    .col-code {
+      min-width: 80px;
+    }
+
+    .col-name {
+      min-width: 260px;
+    }
+
+    .col-qty {
+      min-width: 90px;
+    }
+
+    .col-unit {
+      min-width: 70px;
+    }
+
+    .col-note {
+      min-width: 200px;
+    }
+
+    .col-file {
+      min-width: 110px;
+    }
+
+    .col-created {
+      min-width: 150px;
     }
     .btn-gradient {
       background: linear-gradient(90deg, #5e72e4 0%, #825ee4 100%);
@@ -80,11 +130,12 @@
       </div>
       <div class="col-auto">
         <label class="form-label">กิจกรรม:</label>
+        <!-- NOTE: ค่า value ของแต่ละ option ต้องตรงกับค่า activity ที่บันทึกในตาราง item_receipts / item_wasted / item_ending -->
         <select name="activity" class="form-select">
           <option value="" {% if not activity %}selected{% endif %}>ทั้งหมด</option>
           <option value="Received" {% if activity=='Received' %}selected{% endif %}>รับเข้า (Received)</option>
-          <option value="Adjusted" {% if activity=='Adjusted' %}selected{% endif %}>ของเสีย (Wasted)</option>
-          <option value="Issued" {% if activity=='Issued' %}selected{% endif %}>สิ้นวัน (Ending)</option>
+          <option value="Wasted" {% if activity=='Wasted' %}selected{% endif %}>ของเสีย (Wasted)</option>
+          <option value="Ending" {% if activity=='Ending' %}selected{% endif %}>สิ้นวัน (Ending)</option>
         </select>
       </div>
       <div class="col-auto">
@@ -102,34 +153,37 @@
     </form>
 
     <div class="table-responsive">
-      <table class="table table-bordered align-middle">
+      <!-- ตารางรายงานการเคลื่อนไหวหลัก ใช้ table-sm เพื่อลดความสูงแต่ละแถวให้ดูแน่นขึ้น -->
+      <table class="table table-bordered table-sm align-middle">
         <thead>
+          <!-- กำหนด class ของหัวคอลัมน์ให้สอดคล้องกับ CSS ด้านบน เพื่อคุมความกว้างแต่ละคอลัมน์ -->
           <tr>
-            <th>วันที่</th>
-            <th>Branch</th>
-            <th>กิจกรรม</th>
-            <th>รหัส</th>
-            <th>รายการ</th>
-            <th>จำนวน</th>
-            <th>หน่วย</th>
-            <th>หมายเหตุ</th>
-            <th>ไฟล์แนบ</th>
-            <th>บันทึกเมื่อ</th>
+            <th class="col-date">วันที่</th>
+            <th class="col-branch">Branch</th>
+            <th class="col-activity">กิจกรรม</th>
+            <th class="col-code">รหัส</th>
+            <th class="col-name">รายการ</th>
+            <th class="col-qty">จำนวน</th>
+            <th class="col-unit">หน่วย</th>
+            <th class="col-note">หมายเหตุ</th>
+            <th class="col-file">ไฟล์แนบ</th>
+            <th class="col-created">บันทึกเมื่อ</th>
           </tr>
         </thead>
         <tbody>
 
+          <!-- loop แสดงรายการเคลื่อนไหวแต่ละรายการ จากทั้ง Received / Wasted / Ending -->
           {% for r in rows %}
             <tr>
-                <td>{{ r[0] }}</td>
-                <td>{{ r[1] }}</td>
-                <td>{{ r[2] }}</td>
-                <td>{{ r[3] }}</td>
-                <td>{{ r[4] }}</td>
-                <td style="text-align:right">{{ '%.3f'|format(r[5]) }}</td>
-                <td>{{ r[6] }}</td>
-                <td>{{ r[7] or '' }}</td>
-                <td>
+                <td class="col-date">{{ r[0] }}</td>
+                <td class="col-branch">{{ r[1] }}</td>
+                <td class="col-activity">{{ r[2] }}</td>
+                <td class="col-code">{{ r[3] }}</td>
+                <td class="col-name">{{ r[4] }}</td>
+                <td class="col-qty" style="text-align:right">{{ '%.3f'|format(r[5]) }}</td>
+                <td class="col-unit">{{ r[6] }}</td>
+                <td class="col-note">{{ r[7] or '' }}</td>
+                <td class="col-file">
                   {% if r[8] %}
                     <a href="{{ r[8]|file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
                       <i class="bi bi-paperclip"></i> ไฟล์
@@ -138,9 +192,9 @@
                     <span class="text-muted">-</span>
                   {% endif %}
                 </td>
-                <td>{{ r[9].strftime('%Y-%m-%d %H:%M:%S') if r[9] else '' }}</td>
+                <td class="col-created">{{ r[9].strftime('%Y-%m-%d %H:%M:%S') if r[9] else '' }}</td>
             </tr>
-            {% endfor %}
+          {% endfor %}
         </tbody>
       </table>
     </div>
@@ -158,4 +212,4 @@
     </p>
   </div>
 </body>
-</html></file>
+</html>
