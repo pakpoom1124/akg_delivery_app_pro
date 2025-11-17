@@ -1,0 +1,6 @@
+Flask
+pandas
+pymysql
+pandas
+openpyxl
+cryptography

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>แก้ไขวัตถุดิบ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 500px;
+            margin-top: 40px;
+        }
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3 class="mb-4">แก้ไขวัตถุดิบ</h3>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">
+          {% for m in messages %}{{ m }}<br>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+        <div class="mb-3">
+            <label for="item_code">รหัสวัตถุดิบ:</label>
+            <input type="text" class="form-control" name="item_code" id="item_code" value="{{ r[1] }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="item_name">ชื่อวัตถุดิบ:</label>
+            <input type="text" class="form-control" name="item_name" id="item_name" value="{{ r[2] }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="default_unit">หน่วยมาตรฐาน:</label>
+            <input type="text" class="form-control" name="default_unit" id="default_unit" value="{{ r[3] }}" list="unitlist">
+            <datalist id="unitlist">
+                <option value="KG">
+                <option value="PCS">
+                <option value="UNIT">
+                <option value="PACK">
+            </datalist>
+        </div>
+        <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if r[4] %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">
+                ใช้งาน
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+        <a href="{{ url_for('items_list') }}" class="btn btn-secondary">กลับ</a>
+    </form>
+</div>
+</body>
+</html>

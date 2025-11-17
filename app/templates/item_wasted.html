@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>บันทึกของเสีย (Wasted)</title>
+  <!-- Bootstrap CSS and Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Sarabun Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+      font-family: 'Sarabun', sans-serif;
+      padding: 20px;
+    }
+    .card-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 2rem;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.09);
+      padding: 2rem;
+    }
+    .card-container h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #bfa14c; /* gold */
+      margin-bottom: 1rem;
+    }
+    .table th {
+      background: #825ee4;
+      color: #fff;           
+  }
+    .btn-save {
+      background: linear-gradient(90deg, #5e72e4 0%, #825ee4 100%);
+      border: none;
+      color: #fff;
+      padding: 0.5rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 1.5rem;
+      transition: background 0.2s;
+    }
+    .btn-save:hover {
+      background: linear-gradient(90deg, #7b83eb 0%, #a88fed 100%);
+      color: #fff;
+    }
+    .link-btn {
+      color: #5e72e4;
+      font-size: 1rem;
+      text-decoration: none;
+      margin-left: 0.75rem;
+    }
+    .link-btn:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="card-container">
+    <h2>บันทึกของเสีย (Wasted)</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+    <form method="post" enctype="multipart/form-data">
+      <div class="row mb-3">
+        <div class="col-md-4 col-12 mb-2">
+          <label class="form-label">Date:</label>
+          <input type="date" name="date" class="form-control" value="{{ nowdate }}" required>
+        </div>
+        <div class="col-md-4 col-12 mb-2">
+          <label class="form-label">Branch:</label>
+          <select name="branch" class="form-select" required>
+            <option value="">-- เลือกสาขา --</option>
+            {% for bid, bname in branches %}
+              <option value="{{ bname }}">{{ bid }} - {{ bname }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 col-12 mb-2">
+          <label class="form-label">ประเภทกิจกรรม:</label>
+          <!-- NOTE:
+               ฟิลด์ activity... -->
+          <input type="hidden" name="activity" value="Wasted">
+          <select class="form-select" disabled>
+            <option selected>บันทึกของเสีย (Wasted)</option>
+          </select>
+          <div class="form-text">ระบบจะบันทึกค่าเป็น Wasted ในฐานข้อมูล</div>
+        </div>
+      </div> 
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead>
+            <tr>
+              <th>รหัสวัตถุดิบ</th>
+              <th>รายการวัตถุดิบ</th>
+              <th>ประเภทกิจกรรม</th>
+              <th>จำนวน</th>
+              <th>หน่วย</th>
+              <th>หมายเหตุ</th>
+              <th>แนบไฟล์ (ถ้ามี)</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr class="table-light">
+    <td colspan="7" class="small text-muted">
+      แนบไฟล์ได้: pdf, jpg, jpeg, png, xlsx, xls, csv (หนึ่งไฟล์ต่อรายการ)
+    </td>
+  </tr>
+            {% for code, name, unit in items %}
+            <tr>
+              <td>{{ code }}</td>
+              <td>{{ name }}</td>
+              <td>{{ selected_activity_label|default('บันทึกของเสีย (Wasted)') }}</td>
+              <td><input type="number" step="0.001" min="0" name="qty_{{ code }}" class="form-control"></td>
+              <td>{{ unit }}</td>
+              <td><input type="text" name="note_{{ code }}" class="form-control" placeholder="เช่น lot, ใบกำกับภาษี หรือเหตุผลของเสีย"></td>
+              <td><input type="file" name="file_{{ code }}" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    <button type="submit" class="btn-save">Save</button>
+    <p class="mt-3">
+      <!-- <a href="{{ url_for('items_list') }}" class="link-btn">Edit Item Master</a>
+      <span>|</span> -->
+      <a href="{{ url_for('receipts') }}" class="link-btn">รายงาน / Export</a>
+      <span>|</span>
+      <!-- ปุ่มกลับหน้า Home แบบลอยซ้ายล่าง -->
+         <a href="{{ url_for('home') }}" class="link-btn">
+            <i class="bi bi-house-door"></i>
+        กลับหน้า Home
+        </a>
+    </p>
+    </form>
+  </div>
+</body>
+</html>

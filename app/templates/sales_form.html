@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ฟอร์มกรอกข้อมูล Sales (ทุกคอลัมน์)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons สำหรับไอคอนบ้าน -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f5f7fa; }
+        .container { max-width: 650px; margin-top: 40px; }
+        .form-label { font-weight: 500; }
+        /* ปุ่มลอยซ้ายล่าง */
+        .floating-home-btn {
+            position: fixed;
+            left: 32px;
+            bottom: 32px;
+            z-index: 9999;
+            background: linear-gradient(90deg, #5e72e4 0%, #825ee4 100%);
+            color: #fff !important;
+            border: none;
+            border-radius: 2rem;
+            box-shadow: 0 4px 24px 0 rgba(85,112,240,0.15);
+            padding: 0.7rem 2rem 0.7rem 1.5rem;
+            font-size: 1.09rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            transition: box-shadow 0.18s, background 0.18s;
+        }
+        .floating-home-btn:hover {
+            background: linear-gradient(90deg, #7b83eb 0%, #a88fed 100%);
+            box-shadow: 0 6px 32px 0 rgba(85,112,240,0.22);
+            color: #fff !important;
+            text-decoration: none;
+        }
+        .floating-home-btn .bi {
+            font-size: 1.3em;
+            margin-right: 0.2em;
+        }
+        @media (max-width: 600px) {
+            .floating-home-btn {
+                left: 12px;
+                bottom: 12px;
+                padding: 0.6rem 1.4rem 0.6rem 1.2rem;
+                font-size: 0.98rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- ปุ่ม Export ขวาบน -->
+<div class="d-flex justify-content-end align-items-center" style="margin-top: 20px; margin-right: 32px;">
+    <a href="{{ url_for('export_sales') }}" class="btn btn-outline-success">
+        <i class="bi bi-file-earmark-excel" style="font-size:1.1em"></i>
+        Export Sales (Excel)
+    </a>
+</div>
+
+<div class="container shadow rounded-3 p-4 bg-white">
+    <h2 class="mb-4 text-center text-success">ฟอร์มกรอกข้อมูล Sales Performance</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-success">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="POST">
+        <div class="row g-2">
+            <div class="col-md-6 mb-2">
+                <label class="form-label">วันที่</label>
+                <input type="date" class="form-control" name="Date" required>
+            </div>
+            <!-- <div class="col-md-6 mb-2">
+                <label class="form-label">สาขา (Branch)</label>
+                <input type="text" class="form-control" name="Branch" required>
+            </div> -->
+            <!-- ช่อง Drilldown ที่ปรับใหม่ -->
+            <div class="col-md-6 mb-2">
+                <label class="form-label">สาขา (Branch)</label>
+                <select class="form-select" name="Branch" required>
+                    <option value="" selected disabled>-- กรุณาเลือกสาขา --</option>
+                    <option value="Nara Central World">CTW</option>
+                    <option value="Nara EmQuartier">EMQ</option>
+                    <option value="Nara Emsphere">EMSP</option>
+                    <option value="Nara ICONSIAM">ICS</option>
+                    <option value="Nara Central Embassy">EMB</option>
+                    <option value="Nara One Nimman">ONM</option>
+                    <option value="Nara Erawan">ERW</option>
+                    <!-- เพิ่มสาขาใหม่ได้ที่นี่ -->
+                </select>
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">TargetSales</label>
+                <input type="number" class="form-control" name="TargetSales" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">BaseSales</label>
+                <input type="number" class="form-control" name="BaseSales" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">NoOfGuest</label>
+                <input type="number" class="form-control" name="NoOfGuest" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">AvgCheck</label>
+                <input type="number" class="form-control" name="AvgCheck" min="0" step="0.01">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">StaffMorningShift</label>
+                <input type="text" class="form-control" name="StaffMorningShift">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">StaffAfternoonShift</label>
+                <input type="text" class="form-control" name="StaffAfternoonShift">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">Overtime</label>
+                <input type="text" class="form-control" name="Overtime">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">Absence</label>
+                <input type="text" class="form-control" name="Absence">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">AreaManager2</label>
+                <input type="text" class="form-control" name="AreaManager2">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">ManagerOnDuty</label>
+                <input type="text" class="form-control" name="ManagerOnDuty">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">L_Reservation</label>
+                <input type="text" class="form-control" name="L_Reservation">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">L_FnBUnavaliable</label>
+                <input type="text" class="form-control" name="L_FnBUnavaliable">
+            </div>
+            <div class="col-md-12 mb-2">
+                <label class="form-label">L_ComplainComment</label>
+                <input type="text" class="form-control" name="L_ComplainComment">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_BaseSales</label>
+                <input type="number" class="form-control" name="L_BaseSales" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_AvgCheck</label>
+                <input type="number" class="form-control" name="L_AvgCheck" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_Guest</label>
+                <input type="number" class="form-control" name="L_Guest" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_DineIn</label>
+                <input type="number" class="form-control" name="L_DineIn" min="0" step="0.01">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_TakeAway</label>
+                <input type="number" class="form-control" name="L_TakeAway" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_GrabFood</label>
+                <input type="number" class="form-control" name="L_GrabFood" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_LineMan</label>
+                <input type="number" class="form-control" name="L_LineMan" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">L_Catering</label>
+                <input type="number" class="form-control" name="L_Catering" min="0">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">D_Reservation</label>
+                <input type="text" class="form-control" name="D_Reservation">
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">D_FnBUnavaliable</label>
+                <input type="text" class="form-control" name="D_FnBUnavaliable">
+            </div>
+            <div class="col-md-12 mb-2">
+                <label class="form-label">D_ComplainComment</label>
+                <input type="text" class="form-control" name="D_ComplainComment">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_BaseSales</label>
+                <input type="number" class="form-control" name="D_BaseSales" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_AvgCheck</label>
+                <input type="number" class="form-control" name="D_AvgCheck" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_Guest</label>
+                <input type="number" class="form-control" name="D_Guest" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_DineIn</label>
+                <input type="number" class="form-control" name="D_DineIn" min="0" step="0.01">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_TakeAway</label>
+                <input type="number" class="form-control" name="D_TakeAway" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_GrabFood</label>
+                <input type="number" class="form-control" name="D_GrabFood" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_LineMan</label>
+                <input type="number" class="form-control" name="D_LineMan" min="0">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">D_Catering</label>
+                <input type="number" class="form-control" name="D_Catering" min="0">
+            </div>
+        </div>
+        <div class="text-end mt-3">
+            <button type="submit" class="btn btn-success px-5">บันทึกข้อมูล</button>
+        </div>
+    </form>
+    <div class="mt-3">
+        <a href="{{ url_for('home') }}" class="btn btn-link">&larr; กลับหน้า Home</a>
+    </div>
+</div>
+
+<!-- ปุ่มกลับหน้า Home ลอยซ้ายล่าง -->
+<a href="{{ url_for('home') }}" class="floating-home-btn">
+    <i class="bi bi-house-door"></i>
+    กลับหน้า Home
+</a>
+</body>
+</html>

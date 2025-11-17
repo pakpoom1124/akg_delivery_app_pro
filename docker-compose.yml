@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: akg_db
+      MYSQL_USER: akg_user
+      MYSQL_PASSWORD: akg_pass
+      MYSQL_ROOT_PASSWORD: rootpass
+      TZ: Asia/Bangkok
+    ports:
+      - "3308:3306"
+    volumes:
+      - ./mysql:/var/lib/mysql
+    platform: linux/arm64/v8
+
+  web:
+    build: ./app
+    ports:
+      - "5050:5000"
+    volumes:
+      - ./app:/app
+    depends_on:
+      - db
+    environment:
+      - FLASK_ENV=development
+      - MYSQL_HOST=db
+      - MYSQL_USER=akg_user
+      - MYSQL_PASSWORD=akg_pass
+      - MYSQL_DB=akg_db
+    platform: linux/arm64/v8
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=akg_user
+      - PMA_PASSWORD=akg_pass
+      - UPLOAD_LIMIT=64M
+    depends_on:
+      - db
