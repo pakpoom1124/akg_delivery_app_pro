@@ -25,16 +25,27 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
 
 app.secret_key = "akgsecret"
 
-# Jinja filter: generate download URL for an attached file (used in receipts.html)
+# Jinja filter & helper: generate download URL for an attached file (used in receipts.html & Excel export)
+def build_file_url(value, external: bool = False) -> str:
+    """Build a download URL for an attached file.
+
+    - Accepts either a bare filename ("2025-11-18_AKG-SKV38_Received_1001_20251118053120.jpg")
+      or a path-like string ("/app/uploads/2025-...jpg").
+    - Returns empty string when there is no file.
+    - If external=True, generate an absolute URL (for use in Excel export).
+    """
+    if not value:
+        return ''
+    safe_name = os.path.basename(str(value).strip())
+    if not safe_name:
+        return ''
+    return url_for('download_file', fname=safe_name, _external=external)
+
+
 @app.template_filter('file_url')
 def file_url(fname):
-    """
-    Build a download URL for an attached file (used in receipts.html).
-    Returns empty string if no filename.
-    """
-    if not fname:
-        return ''
-    return url_for('download_file', fname=fname)
+    """Template filter wrapper that always returns a relative URL."""
+    return build_file_url(fname, external=False)
 
 MYSQL_HOST = os.environ.get('MYSQL_HOST', 'db')
 MYSQL_USER = os.environ.get('MYSQL_USER', 'akg_user')
@@ -558,15 +569,18 @@ def receipts():
     activity  = request.args.get('activity','').strip()
 
     sql = """
-        SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+        SELECT id, src_table, receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
         FROM (
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_receipts' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_receipts
             UNION ALL
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_wasted' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_wasted
             UNION ALL
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_ending' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_ending
         ) AS all_moves
         WHERE 1=1
@@ -606,6 +620,125 @@ def receipts():
                            export_url=export_url,
                            branches=branches)
 
+@app.route('/receipt_edit', methods=['GET', 'POST'])
+def receipt_edit():
+    """
+    แก้ไขรายการเคลื่อนไหวเดียว (รองรับทั้ง item_receipts, item_wasted, item_ending)
+    - GET: แสดงฟอร์มแก้ไข quantity / note
+    - POST: บันทึกการแก้ไขแล้ว redirect กลับไปหน้ารายงาน receipts พร้อมตัวกรองเดิม
+    """
+    allowed_tables = {'item_receipts', 'item_wasted', 'item_ending'}
+
+    if request.method == 'POST':
+        src_table = (request.form.get('src_table') or '').strip()
+        rec_id_str = (request.form.get('rec_id') or '').strip()
+        if src_table not in allowed_tables:
+            flash('ตารางที่ต้องการแก้ไขไม่ถูกต้อง', 'danger')
+            return redirect(url_for('receipts'))
+
+        try:
+            rec_id = int(rec_id_str)
+        except ValueError:
+            flash('รหัสรายการไม่ถูกต้อง', 'danger')
+            return redirect(url_for('receipts'))
+
+        qty_str = (request.form.get('quantity') or '').strip()
+        note = (request.form.get('note') or '').strip()
+
+        q_val = None
+        if qty_str != '':
+            try:
+                q_val = float(qty_str)
+            except ValueError:
+                flash('จำนวนที่กรอกไม่ถูกต้อง ระบบจะไม่เปลี่ยนค่า quantity', 'warning')
+                q_val = None
+
+        db = get_db(); cur = db.cursor()
+        try:
+            if q_val is None:
+                # แก้ไขเฉพาะหมายเหตุ
+                cur.execute(f"UPDATE {src_table} SET note=%s WHERE id=%s", (note, rec_id))
+            else:
+                cur.execute(f"UPDATE {src_table} SET quantity=%s, note=%s WHERE id=%s", (q_val, note, rec_id))
+            db.commit()
+            flash('บันทึกการแก้ไขเรียบร้อยแล้ว', 'success')
+        except Exception as e:
+            db.rollback()
+            flash(f'ไม่สามารถบันทึกการแก้ไขได้: {e}', 'danger')
+        finally:
+            db.close()
+
+        # นำตัวกรองเดิมกลับไปใช้ที่หน้า receipts
+        date_from = request.form.get('date_from') or ''
+        date_to   = request.form.get('date_to') or ''
+        branch    = request.form.get('branch') or ''
+        activity  = request.form.get('activity') or ''
+        return redirect(url_for('receipts',
+                                date_from=date_from,
+                                date_to=date_to,
+                                branch=branch,
+                                activity=activity))
+
+    # GET: โหลดข้อมูลรายการที่ต้องการแก้ไข
+    src_table = (request.args.get('src_table') or '').strip()
+    rec_id = request.args.get('rec_id', type=int)
+    date_from = request.args.get('date_from','')
+    date_to   = request.args.get('date_to','')
+    branch    = request.args.get('branch','')
+    activity  = request.args.get('activity','')
+
+    if src_table not in allowed_tables or not rec_id:
+        flash('ข้อมูลที่ต้องการแก้ไขไม่ครบถ้วน', 'danger')
+        return redirect(url_for('receipts'))
+
+    db = get_db(); cur = db.cursor()
+    cur.execute(
+        f"""
+        SELECT id, receipt_date, branch, activity, item_code, item_name,
+               quantity, unit, note, attached_file
+        FROM {src_table}
+        WHERE id = %s
+        """,
+        (rec_id,)
+    )
+    row = cur.fetchone()
+    db.close()
+
+    if not row:
+        flash('ไม่พบรายการที่ต้องการแก้ไข', 'danger')
+        return redirect(url_for('receipts'))
+
+    # map row -> dict เพื่อใช้ใน template
+    rec = {
+        'id':           row[0],
+        'receipt_date': row[1],
+        'branch':       row[2],
+        'activity':     row[3],
+        'item_code':    row[4],
+        'item_name':    row[5],
+        'quantity':     row[6],
+        'unit':         row[7],
+        'note':         row[8],
+        'attached_file':row[9],
+    }
+
+    # แปลงวันที่ให้เป็น string สำหรับแสดงผล
+    if hasattr(rec['receipt_date'], 'strftime'):
+        rec['receipt_date_str'] = rec['receipt_date'].strftime('%Y-%m-%d')
+    else:
+        rec['receipt_date_str'] = str(rec['receipt_date'])
+
+    # ใช้ template แยกไฟล์ templates/edit_receipts.html
+    return render_template(
+        'edit_receipts.html',
+        rec=rec,
+        src_table=src_table,
+        date_from=date_from,
+        date_to=date_to,
+        branch=branch,
+        activity=activity
+    )
+
 # 6) เส้นทางส่งออกข้อมูล item_receipts เป็น Excel
 @app.route('/export_item_receipts')
 def export_item_receipts():
@@ -614,15 +747,18 @@ def export_item_receipts():
     branch    = request.args.get('branch','').strip()
     activity  = request.args.get('activity','').strip()
     sql = """
-        SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+        SELECT id, src_table, receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
         FROM (
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_receipts' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_receipts
             UNION ALL
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_wasted' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_wasted
             UNION ALL
-            SELECT receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
+            SELECT id, 'item_ending' AS src_table,
+                   receipt_date, branch, activity, item_code, item_name, quantity, unit, note, attached_file, created_at
             FROM item_ending
         ) AS all_moves
         WHERE 1=1
@@ -642,10 +778,9 @@ def export_item_receipts():
     db.close()
     # Add absolute download URL for attached files so Excel users can click it
     with app.app_context():
-        def _make_url(x):
-            return url_for('download_file', fname=x, _external=True) if isinstance(x, str) and x.strip() else ''
         if 'attached_file' in df.columns:
-            df['file_url'] = df['attached_file'].apply(_make_url)
+            # Use the same URL-building logic as the Jinja filter, but with absolute URLs
+            df['file_url'] = df['attached_file'].apply(lambda x: build_file_url(x, external=True))
             # Reorder columns if all expected columns are present
             desired = ['receipt_date', 'branch', 'activity', 'item_code', 'item_name',
                        'quantity', 'unit', 'note', 'attached_file', 'file_url', 'created_at']
@@ -735,7 +870,47 @@ def branches_edit(branch_id):
 # === Download attached file route ===
 @app.route('/download/<path:fname>')
 def download_file(fname):
-    return send_from_directory(UPLOAD_DIR, fname, as_attachment=True)
+    """Serve an attached file from the uploads directory as a binary download.
+
+    We normalize the incoming path to a basename to avoid any directory traversal,
+    and add a small compatibility layer for legacy filenames that were stored
+    with an underscore + extension (e.g. ``..._jpg``) instead of ``.jpg``.
+    """
+    # ตัดให้เหลือเฉพาะชื่อไฟล์ ป้องกัน path แปลก ๆ
+    safe_name = os.path.basename((fname or "").strip())
+    full_path = os.path.join(UPLOAD_DIR, safe_name)
+
+    # กรณีที่ชื่อไฟล์ตรงกันพอดี ให้ส่งไฟล์ออกไปเลย
+    if os.path.isfile(full_path):
+        return send_file(full_path, as_attachment=True, download_name=safe_name)
+
+    # --- Compatibility fallback ---
+    # บางไฟล์เก่าอาจถูกบันทึกเป็น ..._jpg แทน ... .jpg
+    # ถ้าชื่อที่ร้องขอเป็น .ext ให้ลองหาชื่อแบบ _ext ด้วย
+    root, ext = os.path.splitext(safe_name)  # ext เช่น ".jpg"
+    candidates = []
+    if ext:
+        # เช่น ขอ "....jpg" -> ลองหา "...._jpg"
+        candidates.append(f"{root}_{ext[1:]}")
+    else:
+        # ถ้าไม่มีจุดนามสกุล แต่ลงท้ายด้วย _jpg / _png / ... ให้ลองกลับเป็น ".jpg"
+        lower_name = safe_name.lower()
+        for e in ["jpg", "jpeg", "png", "pdf", "xlsx", "xls", "csv"]:
+            suffix = "_" + e
+            if lower_name.endswith(suffix):
+                candidates.append(safe_name[: -len(suffix)] + "." + e)
+
+    for cand in candidates:
+        cand_path = os.path.join(UPLOAD_DIR, cand)
+        if os.path.isfile(cand_path):
+            # log ไว้ช่วย debug
+            app.logger.info("download_file fallback: '%s' -> '%s'", safe_name, cand)
+            # ใช้ชื่อไฟล์ที่ผู้ใช้ร้องขอ (safe_name) เป็นชื่อดาวน์โหลด
+            return send_file(cand_path, as_attachment=True, download_name=safe_name or cand)
+
+    # ไม่พบไฟล์จริงในโฟลเดอร์ uploads
+    app.logger.warning("download_file: file not found for '%s'", safe_name)
+    return f"File not found: {safe_name}", 404
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
