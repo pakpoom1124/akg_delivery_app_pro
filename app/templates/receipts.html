@@ -15,8 +15,8 @@
       padding: 20px;
     }
     .card-container {
-      /* ปรับความกว้างสูงสุดของการ์ดให้ใหญ่ขึ้น เพื่อให้ตารางรายงานด้านล่างมีพื้นที่มากขึ้น */
-      max-width: 1200px;
+      /* ปรับความกว้างสูงสุดของการ์ดให้ใหญ่ขึ้นเล็กน้อย เพื่อให้คอลัมน์ "จัดการ" และ "บันทึกเมื่อ" แสดงได้ครบในจอปกติ */
+      max-width: 1300px;
       margin: 0 auto;
       background-color: #fff;
       border-radius: 2rem;
@@ -60,7 +60,8 @@
     }
 
     .col-name {
-      min-width: 260px;
+      /* ลดความกว้างชื่อรายการลงเล็กน้อยเพื่อให้มีพื้นที่สำหรับคอลัมน์ใหม่ */
+      min-width: 220px;
     }
 
     .col-qty {
@@ -72,15 +73,21 @@
     }
 
     .col-note {
-      min-width: 200px;
+      /* ลดความกว้างหมายเหตุลงเล็กน้อย */
+      min-width: 160px;
     }
 
     .col-file {
-      min-width: 110px;
+      min-width: 90px;
     }
 
     .col-created {
-      min-width: 150px;
+      min-width: 130px;
+    }
+
+    .col-actions {
+      min-width: 90px;
+      text-align: center;
     }
     .btn-gradient {
       background: linear-gradient(90deg, #5e72e4 0%, #825ee4 100%);
@@ -167,6 +174,7 @@
             <th class="col-unit">หน่วย</th>
             <th class="col-note">หมายเหตุ</th>
             <th class="col-file">ไฟล์แนบ</th>
+            <th class="col-actions">จัดการ</th>
             <th class="col-created">บันทึกเมื่อ</th>
           </tr>
         </thead>
@@ -175,24 +183,65 @@
           <!-- loop แสดงรายการเคลื่อนไหวแต่ละรายการ จากทั้ง Received / Wasted / Ending -->
           {% for r in rows %}
             <tr>
-                <td class="col-date">{{ r[0] }}</td>
-                <td class="col-branch">{{ r[1] }}</td>
-                <td class="col-activity">{{ r[2] }}</td>
-                <td class="col-code">{{ r[3] }}</td>
-                <td class="col-name">{{ r[4] }}</td>
-                <td class="col-qty" style="text-align:right">{{ '%.3f'|format(r[5]) }}</td>
-                <td class="col-unit">{{ r[6] }}</td>
-                <td class="col-note">{{ r[7] or '' }}</td>
-                <td class="col-file">
-                  {% if r[8] %}
-                    <a href="{{ r[8]|file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                      <i class="bi bi-paperclip"></i> ไฟล์
-                    </a>
-                  {% else %}
-                    <span class="text-muted">-</span>
-                  {% endif %}
-                </td>
-                <td class="col-created">{{ r[9].strftime('%Y-%m-%d %H:%M:%S') if r[9] else '' }}</td>
+              <!-- r[2] = receipt_date -->
+              <td class="col-date">
+                {{ r[2].strftime('%Y-%m-%d') if r[2] else '' }}
+              </td>
+
+              <!-- r[3] = branch -->
+              <td class="col-branch">{{ r[3] }}</td>
+
+              <!-- r[4] = activity -->
+              <td class="col-activity">{{ r[4] }}</td>
+
+              <!-- r[5] = item_code -->
+              <td class="col-code">{{ r[5] }}</td>
+
+              <!-- r[6] = item_name -->
+              <td class="col-name">{{ r[6] }}</td>
+
+              <!-- r[7] = quantity (number) -->
+              <td class="col-qty" style="text-align:right">
+                {% if r[7] is not none %}
+                  {{ '%.3f'|format(r[7]) }}
+                {% endif %}
+              </td>
+
+              <!-- r[8] = unit -->
+              <td class="col-unit">{{ r[8] }}</td>
+
+              <!-- r[9] = note -->
+              <td class="col-note">{{ r[9] or '' }}</td>
+
+              <!-- r[10] = attached_file -->
+              <td class="col-file">
+                {% if r[10] %}
+                  <a href="{{ r[10]|file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-paperclip"></i> ไฟล์
+                  </a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+
+              <!-- ปุ่ม Edit: ผูกกับ route receipt_edit โดยส่ง src_table และ rec_id + เงื่อนไขค้นหาเดิม -->
+              <td class="col-actions">
+                <a href="{{ url_for('receipt_edit',
+                                     src_table=r[1],
+                                     rec_id=r[0],
+                                     date_from=date_from,
+                                     date_to=date_to,
+                                     branch=branch,
+                                     activity=activity) }}"
+                   class="btn btn-sm btn-outline-primary">
+                  Edit
+                </a>
+              </td>
+
+              <!-- r[11] = created_at -->
+              <td class="col-created">
+                {{ r[11].strftime('%Y-%m-%d %H:%M:%S') if r[11] else '' }}
+              </td>
             </tr>
           {% endfor %}
         </tbody>

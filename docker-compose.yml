@@ -19,7 +19,10 @@ services:
     ports:
       - "5050:5000"
     volumes:
+      # โค้ดแอปทั้งก้อน (สำหรับ dev แก้ไฟล์แล้วเห็นผลทันที)
       - ./app:/app
+      # โฟลเดอร์เก็บไฟล์แนบถาวร ไม่หายเวลา recreate container
+      - ./uploads:/app/uploads
     depends_on:
       - db
     environment:
