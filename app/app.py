@@ -60,7 +60,7 @@ menu_items = menu_df["รายการอาหาร"].tolist()
 
 @app.route('/')
 def home():
-    return render_template('home.html', year=datetime.now().year)
+    return render_template('home_akg.html', year=datetime.now().year)
 
 @app.route('/form', methods=['GET', 'POST'])
 def form():
