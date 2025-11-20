@@ -2,6 +2,7 @@ from flask import Flask, render_template, render_template_string, request, redir
 import pandas as pd
 import pymysql
 import os
+import imghdr
 #from datetime import datetime
 from datetime import datetime, timedelta   # เดิมมีแต่ datetime
 from urllib.parse import urlencode
@@ -33,12 +34,51 @@ def build_file_url(value, external: bool = False) -> str:
       or a path-like string ("/app/uploads/2025-...jpg").
     - Returns empty string when there is no file.
     - If external=True, generate an absolute URL (for use in Excel export).
+    - Also normalizes legacy names that were saved as "..._jpg" (no dot extension)
+      or without any extension at all, so that the URL always uses a proper
+      ".jpg" / ".png" / etc. while the download route still knows how to
+      find the real file on disk.
     """
     if not value:
         return ''
+
     safe_name = os.path.basename(str(value).strip())
     if not safe_name:
         return ''
+
+    # --- 1) Handle legacy pattern: "..._jpg" / "..._png" (underscore instead of dot)
+    lower = safe_name.lower()
+    for ext in ("jpg", "jpeg", "png", "pdf", "xlsx", "xls", "csv"):
+        suffix = "_" + ext
+        if lower.endswith(suffix) and not lower.endswith("." + ext):
+            # Convert "..._jpg" -> "....jpg" for URL
+            safe_name = safe_name[: -len(suffix)] + "." + ext
+            lower = safe_name.lower()
+            break
+
+    # --- 2) Handle legacy pattern: value ใน DB ไม่มีจุดนามสกุลเลย ---
+    # ตัวอย่างเช่น "2025-11-20_AKG-Pinklao_Received_1001_20251120111124"
+    # ให้ลองตรวจในโฟลเดอร์ UPLOAD_DIR เพื่อเดาว่าน่าจะเป็นไฟล์ชนิดใด
+    if "." not in safe_name:
+        # พยายามหาไฟล์จริงในโฟลเดอร์ uploads ทั้งแบบ ".ext" และ "_ext"
+        for ext in sorted(ALLOWED_EXT):
+            ext = ext.lower()
+            # candidate แบบมีจุดนามสกุล
+            cand_dot = f"{safe_name}.{ext}"
+            # candidate แบบ legacy ที่เซฟเป็น "_ext"
+            cand_underscore = f"{safe_name}_{ext}"
+
+            if os.path.isfile(os.path.join(UPLOAD_DIR, cand_dot)):
+                # มีไฟล์แบบ .ext จริง ๆ ก็ใช้ชื่อนี้เป็น URL ไปเลย
+                safe_name = cand_dot
+                break
+            if os.path.isfile(os.path.join(UPLOAD_DIR, cand_underscore)):
+                # มีไฟล์แบบ _ext แต่เพื่อให้ดาวน์โหลดเป็น .ext สวย ๆ
+                # ให้ URL ใช้ชื่อแบบมีจุดนามสกุล แล้วให้ download_file
+                # จัดการ map ไปหาไฟล์จริงอีกที
+                safe_name = cand_dot
+                break
+
     return url_for('download_file', fname=safe_name, _external=external)
 
 
@@ -324,11 +364,13 @@ def item_received():
                 saved_filename = None
                 if fileobj and fileobj.filename:
                     if allowed_file(fileobj.filename):
+                        # ใช้ extension เดิมจากไฟล์ต้นฉบับ และบันทึกในรูปแบบ .jpg / .png / ฯลฯ ปกติ
                         original = secure_filename(fileobj.filename)
+                        base, ext = os.path.splitext(original)  # ext เช่น ".jpg"
+                        ext = ext.lower()
                         ts = datetime.now().strftime('%Y%m%d%H%M%S')
-                        # ใส่รายละเอียดเพื่อให้ไม่ชนกัน และดูย้อนหลังได้ง่าย
-                        composed = f"{date_str}_{branch}_{activity}_{code_str}_{ts}_{original}"
-                        fname = secure_filename(composed)
+                        # ตั้งชื่อไฟล์: วันที่_สาขา_กิจกรรม_รหัสวัตถุดิบ_เวลา.นามสกุล
+                        fname = secure_filename(f"{date_str}_{branch}_{activity}_{code_str}_{ts}{ext}")
                         fileobj.save(os.path.join(UPLOAD_DIR, fname))
                         saved_filename = fname
                     else:
@@ -423,10 +465,12 @@ def item_wasted():
                 saved_filename = None
                 if fileobj and fileobj.filename:
                     if allowed_file(fileobj.filename):
+                        # ใช้ extension เดิมจากไฟล์ต้นฉบับ และบันทึกในรูปแบบ .jpg / .png / ฯลฯ ปกติ
                         original = secure_filename(fileobj.filename)
+                        base, ext = os.path.splitext(original)
+                        ext = ext.lower()
                         ts = datetime.now().strftime('%Y%m%d%H%M%S')
-                        composed = f"{date_str}_{branch}_{activity}_{code_str}_{ts}_{original}"
-                        fname = secure_filename(composed)
+                        fname = secure_filename(f"{date_str}_{branch}_{activity}_{code_str}_{ts}{ext}")
                         fileobj.save(os.path.join(UPLOAD_DIR, fname))
                         saved_filename = fname
                     else:
@@ -520,10 +564,12 @@ def item_ending():
                 saved_filename = None
                 if fileobj and fileobj.filename:
                     if allowed_file(fileobj.filename):
+                        # ใช้ extension เดิมจากไฟล์ต้นฉบับ และบันทึกในรูปแบบ .jpg / .png / ฯลฯ ปกติ
                         original = secure_filename(fileobj.filename)
+                        base, ext = os.path.splitext(original)
+                        ext = ext.lower()
                         ts = datetime.now().strftime('%Y%m%d%H%M%S')
-                        composed = f"{date_str}_{branch}_{activity}_{code_str}_{ts}_{original}"
-                        fname = secure_filename(composed)
+                        fname = secure_filename(f"{date_str}_{branch}_{activity}_{code_str}_{ts}{ext}")
                         fileobj.save(os.path.join(UPLOAD_DIR, fname))
                         saved_filename = fname
                     else:
@@ -872,41 +918,73 @@ def branches_edit(branch_id):
 def download_file(fname):
     """Serve an attached file from the uploads directory as a binary download.
 
-    We normalize the incoming path to a basename to avoid any directory traversal,
-    and add a small compatibility layer for legacy filenames that were stored
-    with an underscore + extension (e.g. ``..._jpg``) instead of ``.jpg``.
+    - ป้องกัน path แปลก ๆ ด้วยการใช้ basename เสมอ
+    - รองรับชื่อไฟล์ legacy หลายรูปแบบ เช่น
+      * บันทึกเป็น "..._jpg" แทน "....jpg"
+      * ค่าใน DB ไม่มีนามสกุล แต่ไฟล์จริงเป็น `.jpg` หรือ `_jpg`
+    - พยายามตั้งชื่อไฟล์ที่ดาวน์โหลดให้มีนามสกุลที่ถูกต้องเสมอ
     """
-    # ตัดให้เหลือเฉพาะชื่อไฟล์ ป้องกัน path แปลก ๆ
-    safe_name = os.path.basename((fname or "").strip())
+    # ตัดให้เหลือเฉพาะชื่อไฟล์ ป้องกัน path traversal
+    safe_name = os.path.basename((fname or '').strip())
     full_path = os.path.join(UPLOAD_DIR, safe_name)
 
-    # กรณีที่ชื่อไฟล์ตรงกันพอดี ให้ส่งไฟล์ออกไปเลย
+    # 1) กรณีที่ชื่อไฟล์ตรงกับไฟล์จริงในโฟลเดอร์ uploads
     if os.path.isfile(full_path):
-        return send_file(full_path, as_attachment=True, download_name=safe_name)
+        # ถ้าเป็นไฟล์เก่า ๆ ที่ไม่มีนามสกุล ให้พยายามเดาประเภทไฟล์จากเนื้อไฟล์
+        download_basename = safe_name
+        if '.' not in download_basename:
+            kind = imghdr.what(full_path)
+            if kind in ('jpeg', 'jpg'):
+                download_basename = safe_name + '.jpg'
+            elif kind == 'png':
+                download_basename = safe_name + '.png'
+            elif kind == 'gif':
+                download_basename = safe_name + '.gif'
+            # ถ้าเดาไม่ได้ก็ปล่อยให้เป็นชื่อเดิม (ไม่มีนามสกุล)
 
-    # --- Compatibility fallback ---
-    # บางไฟล์เก่าอาจถูกบันทึกเป็น ..._jpg แทน ... .jpg
-    # ถ้าชื่อที่ร้องขอเป็น .ext ให้ลองหาชื่อแบบ _ext ด้วย
+        return send_file(full_path, as_attachment=True, download_name=download_basename)
+
+    # 2) Compatibility / legacy fallback
     root, ext = os.path.splitext(safe_name)  # ext เช่น ".jpg"
     candidates = []
+
     if ext:
-        # เช่น ขอ "....jpg" -> ลองหา "...._jpg"
+        # กรณีมี .ext แล้ว แต่อาจมีไฟล์เก่าที่ใช้รูปแบบ "_ext" แทน
+        # เช่น ขอ "....jpg" แต่ไฟล์จริงคือ "...._jpg"
         candidates.append(f"{root}_{ext[1:]}")
     else:
-        # ถ้าไม่มีจุดนามสกุล แต่ลงท้ายด้วย _jpg / _png / ... ให้ลองกลับเป็น ".jpg"
+        # กรณีไม่มีจุดนามสกุล ให้ลอง map หลายแบบ
         lower_name = safe_name.lower()
-        for e in ["jpg", "jpeg", "png", "pdf", "xlsx", "xls", "csv"]:
+
+        # 2.1 ถ้าลงท้ายด้วย _jpg / _png / ฯลฯ แล้วไม่มีจุด ให้ลองแปลงเป็น .ext
+        for e in sorted(ALLOWED_EXT):
+            e = e.lower()
             suffix = "_" + e
             if lower_name.endswith(suffix):
                 candidates.append(safe_name[: -len(suffix)] + "." + e)
 
+        # 2.2 กรณีค่าใน DB เป็น base ล้วน ๆ (ไม่มีทั้ง .ext และ _ext)
+        # ให้ลองต่อ .ext และ _ext แล้วค้นหาไฟล์จริง
+        if not candidates:
+            for e in sorted(ALLOWED_EXT):
+                e = e.lower()
+                candidates.append(f"{safe_name}.{e}")
+                candidates.append(f"{safe_name}_{e}")
+
+    # ลองตรวจทุก candidate ว่ามีไฟล์จริงอยู่หรือไม่
     for cand in candidates:
         cand_path = os.path.join(UPLOAD_DIR, cand)
         if os.path.isfile(cand_path):
-            # log ไว้ช่วย debug
-            app.logger.info("download_file fallback: '%s' -> '%s'", safe_name, cand)
-            # ใช้ชื่อไฟล์ที่ผู้ใช้ร้องขอ (safe_name) เป็นชื่อดาวน์โหลด
-            return send_file(cand_path, as_attachment=True, download_name=safe_name or cand)
+            # กำหนดชื่อไฟล์สำหรับดาวน์โหลด
+            download_basename = safe_name
+            if '.' not in download_basename:
+                # ถ้า original ไม่มีนามสกุล ให้ใช้ส่วนขยายของไฟล์จริง
+                _, real_ext = os.path.splitext(cand)
+                if real_ext:
+                    download_basename = safe_name + real_ext
+
+            app.logger.info("download_file fallback: '%s' -> '%s' (download as '%s')", safe_name, cand, download_basename)
+            return send_file(cand_path, as_attachment=True, download_name=download_basename)
 
     # ไม่พบไฟล์จริงในโฟลเดอร์ uploads
     app.logger.warning("download_file: file not found for '%s'", safe_name)
