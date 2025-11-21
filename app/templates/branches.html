@@ -14,7 +14,7 @@
       padding:20px;
     }
     .card-container{
-      max-width:1000px;margin:0 auto;background:#fff;border-radius:2rem;
+      max-width:1200px;margin:0 auto;background:#fff;border-radius:2rem;
       box-shadow:0 8px 40px rgba(0,0,0,.09);padding:2rem;
     }
     h2{font-size:2rem;font-weight:700;color:#bfa14c;margin-bottom:1rem}
@@ -28,6 +28,16 @@
     .link-btn{color:#5e72e4;text-decoration:none;margin-left:.75rem}
     .link-btn:hover{text-decoration:underline}
     .table th{background:#825ee4;color:#fff}
+    .table th,
+    .table td{
+      font-size:0.95rem;
+      padding:.55rem .75rem;
+      white-space:nowrap;
+    }
+    /* ให้ชื่อสาขาสามารถตัดบรรทัดได้ เพื่อไม่ให้คอลัมน์อื่นเบียดกัน */
+    .table td:nth-child(2){
+      white-space:normal;
+    }
   </style>
 </head>
 <body>

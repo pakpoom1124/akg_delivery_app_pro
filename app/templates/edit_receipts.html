@@ -3,20 +3,25 @@
 <head>
   <meta charset="utf-8">
   <title>แก้ไขรายการเคลื่อนไหว</title>
-</head>
+  <!-- ทำให้หน้าเว็บแสดงผลได้ดีบนมือถือ / จอเล็ก -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5 สำหรับใช้ layout และ component ให้เหมือนหน้าตาอื่นในระบบ -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
+    /* พื้นหลังโทนอ่อน ให้กล่อง card ดูเด่นขึ้น */
     body {
       background-color: #f5f7ff;
     }
 
-    /* ใช้สีทองเหมือนหัวข้อหน้ารายงานอื่น ๆ */
+    /* สีทองสำหรับหัวข้อหน้า ให้โทนเดียวกับหน้ารายงานอื่น */
     .page-title {
       color: #c9a73b;
       font-weight: 700;
     }
 
-    /* ปุ่มหลักโทนม่วงเหมือนปุ่มค้นหา / บันทึกในหน้าอื่น */
+    /* ปุ่มหลักโทนม่วง ใช้กับปุ่ม "บันทึกการแก้ไข" */
     .btn-akg-primary {
       background: linear-gradient(135deg, #7b5cff, #5a2dff);
       border: none;
@@ -31,7 +36,7 @@
       box-shadow: 0 6px 16px rgba(90, 45, 255, 0.45);
     }
 
-    /* ปุ่มรอง โทนขาว-ม่วง ให้หน้าตาไปด้วยกันกับปุ่มอื่น */
+    /* ปุ่มรองโทนขาว-ม่วง ใช้กับปุ่ม "ยกเลิก / กลับหน้ารายงาน" */
     .btn-akg-secondary {
       background-color: #ffffff;
       color: #5a2dff;
@@ -44,17 +49,33 @@
       color: #4620d0;
       border-color: #4620d0;
     }
+
+    /* จัด spacing ของฟอร์มให้ดูเป็นระเบียบ */
+    .form-label {
+      font-weight: 500;
+    }
+
+    .attachment-preview img {
+      max-width: 260px;
+      max-height: 260px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      display: block;
+      margin-bottom: 6px;
+    }
   </style>
 </head>
-</head>
+
 <body class="bg-light">
 <div class="container py-4">
+  <!-- หัวข้อหน้าจอแก้ไข -->
   <h3 class="mb-4 page-title">แก้ไขรายการเคลื่อนไหว</h3>
 
-  <div class="card mb-3">
+  <div class="card mb-3 shadow-sm">
     <div class="card-body">
+      <!-- ฟอร์มสำหรับส่งข้อมูลกลับไป update ใน backend -->
       <form method="post">
-        <!-- hidden fields สำหรับส่งค่ากลับไป update -->
+        <!-- hidden fields สำหรับส่งค่าบริบท (context) กลับไป เช่น filter เดิมที่ใช้ค้นหา -->
         <input type="hidden" name="src_table" value="{{ src_table }}">
         <input type="hidden" name="rec_id" value="{{ rec.id }}">
         <input type="hidden" name="date_from" value="{{ date_from }}">
@@ -62,6 +83,7 @@
         <input type="hidden" name="branch" value="{{ branch }}">
         <input type="hidden" name="activity" value="{{ activity }}">
 
+        <!-- แสดงข้อมูลหลักของเอกสาร (อ่านอย่างเดียว) -->
         <div class="row mb-3">
           <div class="col-md-3">
             <label class="form-label">วันที่</label>
@@ -81,6 +103,7 @@
           </div>
         </div>
 
+        <!-- ข้อมูลวัตถุดิบ (อ่านอย่างเดียว) -->
         <div class="row mb-3">
           <div class="col-md-4">
             <label class="form-label">รหัสวัตถุดิบ</label>
@@ -92,6 +115,7 @@
           </div>
         </div>
 
+        <!-- ส่วนที่อนุญาตให้แก้ไขได้: จำนวน + หมายเหตุ -->
         <div class="row mb-3">
           <div class="col-md-4">
             <label class="form-label">จำนวน (แก้ไขได้)</label>
@@ -104,17 +128,24 @@
           </div>
         </div>
 
+        <!-- แสดงไฟล์แนบเดิม: ใช้ filter file_url เพื่อให้ path ถูกต้องเหมือนหน้า receipts -->
         <div class="mb-3">
           <label class="form-label">ไฟล์แนบเดิม</label><br>
           {% if rec.attached_file %}
-            <a href="{{ rec.attached_file|file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-              เปิดไฟล์แนบ
-            </a>
+            <div class="attachment-preview">
+              <!-- แสดงเป็นรูปภาพตัวอย่าง (ถ้าเป็นไฟล์รูป) -->
+              <img src="{{ rec.attached_file | file_url }}" alt="ไฟล์แนบเดิม">
+              <!-- ลิงก์สำหรับเปิดในแท็บใหม่ / ดาวน์โหลด -->
+              <a href="{{ rec.attached_file | file_url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                เปิดไฟล์แนบ / ดาวน์โหลด
+              </a>
+            </div>
           {% else %}
             <span class="text-muted">ไม่มีไฟล์แนบ</span>
           {% endif %}
         </div>
 
+        <!-- ปุ่ม action: บันทึกการแก้ไข + กลับหน้ารายงาน -->
         <button type="submit" class="btn btn-akg-primary">บันทึกการแก้ไข</button>
         <a href="{{ url_for('receipts',
                              date_from=date_from,
