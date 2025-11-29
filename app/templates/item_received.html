@@ -50,6 +50,10 @@
       min-width: 140px;
     }
 
+    .col-qty {
+      min-width: 120px; /* ขยายช่องจำนวนให้กว้างขึ้นประมาณ 10% */
+    }
+
     .col-note {
       min-width: 220px;
     }
@@ -121,7 +125,7 @@
               <th class="col-item-code">รหัสวัตถุดิบ</th>
               <th class="col-item-name">รายการวัตถุดิบ</th>
               <th class="col-activity">ประเภทกิจกรรม</th>
-              <th>จำนวน</th>
+              <th class="col-qty">จำนวน</th> <!-- เพิ่ม class col-qty เพื่อควบคุมความกว้างคอลัมน์จำนวน -->
               <th>หน่วย</th>
               <th class="col-note">หมายเหตุ</th>
               <th class="col-file">แนบไฟล์ (ถ้ามี)</th>
@@ -133,7 +137,9 @@
               <td class="col-item-code">{{ code }}</td>
               <td class="col-item-name">{{ name }}</td>
               <td class="col-activity">{{ selected_activity_label }}</td>
-              <td><input type="number" step="0.001" min="0" name="qty_{{ code }}" class="form-control"></td>
+              <td class="col-qty">
+                <input type="number" step="0.001" min="0" name="qty_{{ code }}" class="form-control">
+              </td> <!-- ผูก class col-qty กับช่องจำนวนให้ใช้ความกว้างใหม่ -->
               <td>{{ unit }}</td>
               <td class="col-note">
                 <input type="text" name="note_{{ code }}" class="form-control" placeholder="เช่น lot, ใบกำกับภาษี">

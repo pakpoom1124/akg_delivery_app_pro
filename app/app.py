@@ -262,7 +262,7 @@ def items_list():
             except Exception as e:
                 db.rollback()
                 flash(f'เกิดข้อผิดพลาด: {e}')
-    cur.execute("SELECT id, item_code, item_name, default_unit, is_active FROM items ORDER BY item_code")
+    cur.execute("SELECT id, item_code, item_name, default_unit, is_active FROM items ORDER BY item_code ASC")
     rows = cur.fetchall()
     db.close()
     return render_template('items.html', rows=rows)
@@ -321,7 +321,7 @@ def item_received():
         SELECT item_code, item_name, default_unit
         FROM items
         WHERE is_active=1
-        ORDER BY item_code
+        ORDER BY item_code ASC
     """)
     items = cur.fetchall()
 
@@ -330,7 +330,7 @@ def item_received():
         SELECT branch_id, branch_name
         FROM AKG_Branches
         WHERE is_active=1
-        ORDER BY branch_id
+        ORDER BY branch_id ASC
     """)
     branches = cur.fetchall()
 
@@ -415,7 +415,7 @@ def item_wasted():
         SELECT item_code, item_name, default_unit
         FROM items
         WHERE is_active=1
-        ORDER BY item_code
+        ORDER BY item_code ASC
     """)
     items = cur.fetchall()
 
@@ -424,7 +424,7 @@ def item_wasted():
         SELECT branch_id, branch_name
         FROM AKG_Branches
         WHERE is_active=1
-        ORDER BY branch_id
+        ORDER BY branch_id ASC
     """)
     branches = cur.fetchall()
 
@@ -515,7 +515,7 @@ def item_ending():
         SELECT item_code, item_name, default_unit
         FROM items
         WHERE is_active=1
-        ORDER BY item_code
+        ORDER BY item_code ASC
     """)
     items = cur.fetchall()
 
@@ -524,7 +524,7 @@ def item_ending():
         SELECT branch_id, branch_name
         FROM AKG_Branches
         WHERE is_active=1
-        ORDER BY branch_id
+        ORDER BY branch_id ASC
     """)
     branches = cur.fetchall()
 

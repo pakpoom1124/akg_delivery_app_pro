@@ -54,6 +54,10 @@
       min-width: 140px;
     }
 
+    .col-qty {
+      min-width: 120px; /* ขยายช่องจำนวนให้กว้างขึ้นประมาณ 10% */
+    }
+
     .col-note {
       min-width: 220px;
     }
@@ -128,7 +132,8 @@
               <th class="col-item-code">รหัสวัตถุดิบ</th>
               <th class="col-item-name">รายการวัตถุดิบ</th>
               <th class="col-activity">ประเภทกิจกรรม</th>
-              <th>จำนวน</th>
+              <!-- ใส่ class="col-qty" เพื่อขยายความกว้างคอลัมน์จำนวน -->
+              <th class="col-qty">จำนวน</th>
               <th>หน่วย</th>
               <th class="col-note">หมายเหตุ</th>
               <th class="col-file">แนบไฟล์ (ถ้ามี)</th>
@@ -146,7 +151,10 @@
               <td class="col-item-code">{{ code }}</td>
               <td class="col-item-name">{{ name }}</td>
               <td class="col-activity">{{ selected_activity_label|default('บันทึกของเสีย (Wasted)') }}</td>
-              <td><input type="number" step="0.001" min="0" name="qty_{{ code }}" class="form-control"></td>
+              <!-- ใส่ class="col-qty" กับเซลล์จำนวนเพื่อให้กว้างขึ้นสอดคล้องกับหัวคอลัมน์ -->
+              <td class="col-qty">
+                <input type="number" step="0.001" min="0" name="qty_{{ code }}" class="form-control">
+              </td>
               <td>{{ unit }}</td>
               <td class="col-note">
                 <input type="text" name="note_{{ code }}" class="form-control" placeholder="เช่น lot, ใบกำกับภาษี หรือเหตุผลของเสีย">
